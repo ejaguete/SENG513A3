@@ -10,9 +10,36 @@ http.listen( port, function () {
 
 app.use(express.static(__dirname + '/public'));
 
+var users = [];
 // listen to 'chat' messages
 io.on('connection', function(socket){
+    console.log('user connected');
     socket.on('chat', function(msg){
-	io.emit('chat', msg);
+        if(isReqNickname(msg))
+            console.log("user set nick to " + getNickname(msg));
+        else
+	        io.emit('chat', msg);
     });
+
+    socket.on('disconnect', function() {
+        console.log('user disconnected');
+    })
 });
+
+function isReqNickname(msg) {
+    return msg.substring(0, 5) === "/nick";
+
+}
+
+function getNickname(msg) {
+    return msg.split(" ")[1];
+}
+
+function checkNickname(nick) {
+    if(users.indexOf(nick) > -1) {
+        users.push(nick);
+        console.log(nick + " is available");
+    } else {
+        console.log(nick + " is unavailable.");
+    }
+}
