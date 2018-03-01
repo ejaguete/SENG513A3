@@ -1,12 +1,35 @@
-// shorthand for $(document).ready(...)
+var socket = io();
+
+var userid;
+var nick;
+
+// http://psitsmike.com/2011/09/node-js-and-socket-io-chat-tutorial/
+// idk what i was doing but i need to register nicknames
+// and only show specific nickname to socket connected
+
+socket.on('connect', function() {
+   socket.emit('reqDefaultNickname');
+
+   socket.on('rcvNickname', function(id, nickname) {
+       userid = id;
+       nick = nickname;
+       $('#userbox').text(nick);
+   });
+
+   socket.on('updateChat', function(nickname, msg) {
+       $('#messages').append($('<li>').html("<span id='username'>" + nickname + ":</span> "+ msg))
+   });
+});
+
+// on page load
 $(function() {
-    var socket = io();
     $('form').submit(function(){
-	socket.emit('chat', $('#m').val());
-	$('#m').val('');
-	return false;
+        socket.emit('sendMsg', nick, $('#m').val());
+        $('#m').val('');
+        return false;
     });
-    socket.on('chat', function(msg){
+
+    socket.on('broadcastMsg', function(msg){
 	$('#messages').append($('<li>').text(msg));
     });
 });

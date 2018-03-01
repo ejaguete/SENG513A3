@@ -13,33 +13,57 @@ app.use(express.static(__dirname + '/public'));
 var users = [];
 // listen to 'chat' messages
 io.on('connection', function(socket){
-    console.log('user connected');
-    socket.on('chat', function(msg){
-        if(isReqNickname(msg))
-            console.log("user set nick to " + getNickname(msg));
-        else
-	        io.emit('chat', msg);
+    console.log('SERVER: user connected');
+
+    // client requests a nickname from the server
+    // server sends nickname to client and sends alert via chat
+    socket.on('reqDefaultNickname', function() {
+        let id = users.length;
+        let nickname = 'user' + (id+1).toString();
+        users[id] = nickname;
+        socket.username = nickname;
+        console.log('SERVER: user' + id + ' assigned nickname \'' + nickname + '\'');
+        socket.emit('rcvNickname', id, nickname);
+        socket.emit('updateChat', 'SERVER', 'Welcome, ' + nickname);
+        console.log('users online: ' + users);
+    });
+
+    // client sends msg to server
+    socket.on('sendMsg', function(nick, msg){
+        // check if requesting nickname change
+        if(isReqNickname(msg)) {
+           let newnick = getNickname(msg);
+           if(!nicknameIsInUse(newnick)) {
+               let userid = users.indexOf(socket.username);
+               users[userid] = newnick;
+               socket.username = newnick;
+               console.log('SERVER: user' + nick + ' assigned nickname \'' + newnick + '\'');
+               socket.emit('rcvNickname', userid, newnick);
+               socket.emit('updateChat', 'SERVER', 'Nickname changed to ' + socket.username);
+           } else {
+               console.log('SERVER: Nickname ' + newnick + ' already in use');
+           }
+        }
+        else {
+            io.sockets.emit('updateChat', nick, msg);
+        }
     });
 
     socket.on('disconnect', function() {
-        console.log('user disconnected');
+        users.splice(users.indexOf(socket.username), 1);
+        console.log( socket.username + ' disconnected');
+        console.log('users online: ' + users);
     })
 });
 
 function isReqNickname(msg) {
     return msg.substring(0, 5) === "/nick";
-
 }
 
 function getNickname(msg) {
     return msg.split(" ")[1];
 }
 
-function checkNickname(nick) {
-    if(users.indexOf(nick) > -1) {
-        users.push(nick);
-        console.log(nick + " is available");
-    } else {
-        console.log(nick + " is unavailable.");
-    }
+function nicknameIsInUse(nick) {
+    return users.indexOf(nick) > -1;
 }
